@@ -1,0 +1,120 @@
+package com.gnfo.config;
+
+import java.util.Properties;
+
+import javax.sql.DataSource;
+
+
+
+
+
+
+
+
+
+import org.apache.commons.dbcp2.BasicDataSource;
+import org.hibernate.SessionFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.orm.hibernate4.HibernateTransactionManager;
+import org.springframework.orm.hibernate4.LocalSessionFactoryBuilder;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.web.servlet.HandlerExceptionResolver;
+import org.springframework.web.servlet.handler.SimpleMappingExceptionResolver;
+import org.springframework.web.servlet.view.InternalResourceViewResolver;
+
+import com.gnfo.aop.LoggingAspect;
+import com.gnfo.dao.UserDAO;
+import com.gnfo.dao.UserDAOImpl;
+import com.gnfo.model.User;
+
+@Configuration
+@ComponentScan("com.gnfo")
+@EnableTransactionManagement
+public class ApplicationContextConfig {
+ 
+	@Bean(name = "viewResolver")
+	public InternalResourceViewResolver getViewResolver() {
+	    InternalResourceViewResolver viewResolver = new InternalResourceViewResolver();
+	    viewResolver.setPrefix("/WEB-INF/jsp/");
+	    viewResolver.setSuffix(".jsp");
+	    return viewResolver;
+	}
+	
+	@Bean(name = "dataSource")
+	public DataSource getDataSource() {
+	    BasicDataSource dataSource = new BasicDataSource();
+	    dataSource.setDriverClassName("com.mysql.jdbc.Driver");
+	    dataSource.setUrl("jdbc:mysql://localhost:3306/contactdb");
+	    dataSource.setUsername("root");
+	    dataSource.setPassword("root");
+	 
+	    return dataSource;
+	}
+	
+	@Autowired
+	@Bean(name = "sessionFactory")
+	public SessionFactory getSessionFactory(DataSource dataSource) {
+	 
+	    LocalSessionFactoryBuilder sessionBuilder = new LocalSessionFactoryBuilder(dataSource);
+	 
+	    sessionBuilder.addAnnotatedClasses(User.class);
+	    sessionBuilder.scanPackages("com.gnfo.model");
+	    sessionBuilder.setProperty("hibernate.show_sql", "true");
+	    sessionBuilder.addProperties(getHibernateProperties());
+	    return sessionBuilder.buildSessionFactory();
+	}
+	
+	private Properties getHibernateProperties() {
+	    Properties properties = new Properties();
+	    properties.put("hibernate.show_sql", "true");
+	    properties.put("hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
+	    return properties;
+	}
+	
+	@Autowired
+	@Bean(name = "transactionManager")
+	public HibernateTransactionManager getTransactionManager(
+	        SessionFactory sessionFactory) {
+	    HibernateTransactionManager transactionManager = new HibernateTransactionManager(
+	            sessionFactory);
+	 
+	    return transactionManager;
+	}
+	
+	@Autowired
+	@Bean(name = "userDao")
+	public UserDAO getUserDao(SessionFactory sessionFactory) {
+	    return new UserDAOImpl(sessionFactory);
+	}
+ 
+	@Bean
+    public HandlerExceptionResolver handlerExceptionResolver() {
+        SimpleMappingExceptionResolver resolver = new SimpleMappingExceptionResolver();
+
+        Properties exceptionMappings = new Properties();
+        exceptionMappings.put("org.springframework.web.servlet.PageNotFound", "404");
+        exceptionMappings.put("java.lang.ArithmeticException", "arthemetic_exception");
+        exceptionMappings.put("java.lang.NumberFormatException", "numberformat_exception");
+        exceptionMappings.put("Exception", "globalerror");
+
+        resolver.setExceptionMappings(exceptionMappings);
+        resolver.setDefaultErrorView("globalerror");
+
+        return resolver;
+    }
+	
+//  @Bean	
+//  public LoggingAspect loggingAspect(){
+//	 return new LoggingAspect();
+//  }
+//	
+//	@Bean
+//	public AnnotationAwareAspectJAutoProxyCreator annotationAwareAspectJAutoProxyCreator(){ 
+//
+//	AnnotationAwareAspectJAutoProxyCreator aop=new AnnotationAwareAspectJAutoProxyCreator();
+//	return aop;
+//	}
+}
